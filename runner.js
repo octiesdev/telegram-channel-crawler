@@ -29,10 +29,8 @@ async function run(startUrl) {
     await new Promise(resolve => setTimeout(resolve, 3000));
 
     const data = await page.evaluate(() => {
-      const similar = Array.from(document.querySelectorAll("div.tgme_channel_list a"))
-        .map(a => a.href)
-        .filter(href => href.startsWith("https://t.me/"));
-      return similar;
+      const links = Array.from(document.querySelectorAll('a.tgme_channel_card__link'));
+      return links.map(a => a.href).filter(href => href.startsWith("https://t.me/"));
     });
 
     if (data.length > 0) {
