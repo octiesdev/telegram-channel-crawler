@@ -1,6 +1,6 @@
 const TelegramBot = require("node-telegram-bot-api");
 const fs = require("fs-extra");
-import { CONFIG } from "./config.js";
+const { CONFIG } = require("./config.js");
 
 
 const bot = new TelegramBot(CONFIG.TELEGRAM_BOT_TOKEN, { polling: true });
