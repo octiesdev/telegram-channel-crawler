@@ -1,0 +1,13 @@
+# flyctl launch added from .gitignore
+# .env защищаем
+**/.env
+
+# Сессии Telegram
+**/sessions
+
+# Node-модули
+**/node_modules
+
+# Логи
+**/logs
+fly.toml
