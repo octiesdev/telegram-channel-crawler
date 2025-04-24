@@ -18,13 +18,14 @@ bot.onText(/\/start/, (msg) => {
 });
 
 // /parse
+// /parse
 bot.onText(/\/parse (.+)/, async (msg, match) => {
   const url = match[1];
   bot.sendMessage(msg.chat.id, `🔍 Запускаю парсинг от: ${url}`);
 
-  // тут пока заглушка
-  // в будущем вызовем runner.js → run(url)
+  await fs.ensureDir("./logs");
   await fs.appendFile("./logs/log.txt", `[${new Date().toISOString()}] START PARSE: ${url}\n`);
+
   bot.sendMessage(msg.chat.id, "🛠 Парсинг ещё не запущен — но команда принята. runner.js в разработке.");
 });
 
