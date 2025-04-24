@@ -15,6 +15,34 @@ bot.on("message", (msg) => {
   }
 });
 
+// Загрузка сессии: /upload_session
+bot.on("document", async (msg) => {
+    const chatId = msg.chat.id;
+    const fileId = msg.document.file_id;
+    const fileName = msg.document.file_name || `session_${Date.now()}.json`;
+  
+    if (!fileName.endsWith(".json")) {
+      return bot.sendMessage(chatId, "⛔️ Пожалуйста, отправь файл формата .json");
+    }
+  
+    try {
+      const fileLink = await bot.getFileLink(fileId);
+      const response = await fetch(fileLink);
+      const sessionData = await response.text();
+  
+      // Проверка на JSON
+      JSON.parse(sessionData);
+  
+      const savePath = path.join(CONFIG.SESSIONS_DIR, fileName);
+      await fs.outputFile(savePath, sessionData);
+  
+      bot.sendMessage(chatId, `✅ Сессия успешно сохранена как ${fileName}`);
+    } catch (err) {
+      console.error("Ошибка загрузки сессии:", err);
+      bot.sendMessage(chatId, "❌ Ошибка при загрузке. Проверь формат и попробуй снова.");
+    }
+  });
+
 // /start
 bot.onText(/\/start/, (msg) => {
   bot.sendMessage(msg.chat.id, "✅ Бот готов к работе! Напиши /parse <ссылка>");

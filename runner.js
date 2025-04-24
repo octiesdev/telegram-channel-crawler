@@ -11,12 +11,28 @@ async function run(startUrl) {
   const visited = await fs.readJson(CONFIG.VISITED_FILE).catch(() => []);
   const results = await fs.readJson(CONFIG.RESULT_FILE).catch(() => []);
 
+  const sessionFiles = await fs.readdir(CONFIG.SESSIONS_DIR);
+  if (sessionFiles.length === 0) {
+    throw new Error("❌ Нет доступных сессий Telegram. Загрузите хотя бы одну .json сессию через бота.");
+  }
+
+  // Выбираем случайную сессию
+  const sessionPath = path.join(CONFIG.SESSIONS_DIR, sessionFiles[Math.floor(Math.random() * sessionFiles.length)]);
+  const cookies = await fs.readJson(sessionPath);
+
   const browser = await puppeteer.launch({
-        headless: "new",
-        args: ["--no-sandbox", "--disable-setuid-sandbox"]
-    });
+    headless: "new",
+    args: ["--no-sandbox", "--disable-setuid-sandbox"]
+  });
   const page = await browser.newPage();
   await page.setViewport({ width: 1200, height: 800 });
+
+  // Устанавливаем cookies
+  await page.goto("https://web.telegram.org/k/", { waitUntil: "domcontentloaded" });
+  for (const cookie of cookies) {
+    await page.setCookie(cookie);
+  }
+  await page.reload({ waitUntil: "domcontentloaded" });
 
   const queue = [startUrl];
 
@@ -29,8 +45,10 @@ async function run(startUrl) {
     await new Promise(resolve => setTimeout(resolve, 3000));
 
     const data = await page.evaluate(() => {
-      const links = Array.from(document.querySelectorAll('a.tgme_channel_card__link'));
-      return links.map(a => a.href).filter(href => href.startsWith("https://t.me/"));
+      const similar = Array.from(document.querySelectorAll("a.tgme_channel_related"))
+        .map(a => a.href)
+        .filter(href => href.startsWith("https://t.me/"));
+      return similar;
     });
 
     if (data.length > 0) {
