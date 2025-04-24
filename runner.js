@@ -26,7 +26,7 @@ async function run(startUrl) {
 
     console.log(`🔍 Парсим: ${url}`);
     await page.goto(url, { waitUntil: "domcontentloaded", timeout: 30000 }).catch(() => null);
-    await page.waitForTimeout(3000);
+    await new Promise(resolve => setTimeout(resolve, 3000));
 
     const data = await page.evaluate(() => {
       const similar = Array.from(document.querySelectorAll("a.tgme_channel_related"))
