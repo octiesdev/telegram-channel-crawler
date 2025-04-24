@@ -11,7 +11,10 @@ async function run(startUrl) {
   const visited = await fs.readJson(CONFIG.VISITED_FILE).catch(() => []);
   const results = await fs.readJson(CONFIG.RESULT_FILE).catch(() => []);
 
-  const browser = await puppeteer.launch({ headless: "new" });
+  const browser = await puppeteer.launch({
+        headless: "new",
+        args: ["--no-sandbox", "--disable-setuid-sandbox"]
+    });
   const page = await browser.newPage();
   await page.setViewport({ width: 1200, height: 800 });
 
