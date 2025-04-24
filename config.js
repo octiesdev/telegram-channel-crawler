@@ -6,6 +6,7 @@ module.exports = {
       ADMIN_CHAT_ID: process.env.ADMIN_CHAT_ID,
       RESULT_FILE: "./results/results.json",
       VISITED_FILE: "./data/visited.json",
-      QUEUE_FILE: "./queue.json"
+      QUEUE_FILE: "./queue.json",
+      SESSIONS_DIR: "./session/masha_gul.json",  // ← ОБЯЗАТЕЛЬНО!
     }
   };
