@@ -1,6 +1,7 @@
 const TelegramBot = require("node-telegram-bot-api");
 const fs = require("fs-extra");
 const { CONFIG } = require("./config.js");
+const { run } = require("./runner");
 
 
 const bot = new TelegramBot(CONFIG.TELEGRAM_BOT_TOKEN, { polling: true });
@@ -18,7 +19,6 @@ bot.onText(/\/start/, (msg) => {
 });
 
 // /parse
-// /parse
 bot.onText(/\/parse (.+)/, async (msg, match) => {
   const url = match[1];
   bot.sendMessage(msg.chat.id, `🔍 Запускаю парсинг от: ${url}`);
@@ -26,7 +26,14 @@ bot.onText(/\/parse (.+)/, async (msg, match) => {
   await fs.ensureDir("./logs");
   await fs.appendFile("./logs/log.txt", `[${new Date().toISOString()}] START PARSE: ${url}\n`);
 
-  bot.sendMessage(msg.chat.id, "🛠 Парсинг ещё не запущен — но команда принята. runner.js в разработке.");
+  try {
+    const { run } = require("./runner");
+    await run(url);
+    bot.sendMessage(msg.chat.id, "✅ Парсинг завершён. Данные добавлены в results.json");
+  } catch (err) {
+    console.error("Ошибка при запуске парсера:", err);
+    bot.sendMessage(msg.chat.id, "❌ Ошибка при запуске парсинга. Подробности в логах.");
+  }
 });
 
 // /status
