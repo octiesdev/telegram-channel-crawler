@@ -26,13 +26,10 @@ async function run(startUrl) {
 
     console.log(`🔍 Парсим: ${url}`);
     await page.goto(url, { waitUntil: "domcontentloaded", timeout: 30000 }).catch(() => null);
-    await new Promise(resolve => setTimeout(resolve, 5000));
-
-    const html = await page.content();
-    await fs.writeFile("debug.html", html);
+    await new Promise(resolve => setTimeout(resolve, 3000));
 
     const data = await page.evaluate(() => {
-        const similar = Array.from(document.querySelectorAll("div.tgme_channel_list a"))
+      const similar = Array.from(document.querySelectorAll("div.tgme_channel_list a"))
         .map(a => a.href)
         .filter(href => href.startsWith("https://t.me/"));
       return similar;
