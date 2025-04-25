@@ -16,33 +16,38 @@ bot.on("message", (msg) => {
   }
 });
 
-// Загрузка сессии: /upload_session
+const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args)); // ⬅️ добавь это вверху
+
 bot.on("document", async (msg) => {
-    const chatId = msg.chat.id;
-    const fileId = msg.document.file_id;
-    const fileName = msg.document.file_name || `session_${Date.now()}.json`;
-  
-    if (!fileName.endsWith(".json")) {
-      return bot.sendMessage(chatId, "⛔️ Пожалуйста, отправь файл формата .json");
-    }
-  
-    try {
-      const fileLink = await bot.getFileLink(fileId);
-      const response = await fetch(fileLink);
-      const sessionData = await response.text();
-  
-      // Проверка на JSON
-      JSON.parse(sessionData);
-  
-      const savePath = path.join(CONFIG.SESSIONS_DIR, fileName);
-      await fs.outputFile(savePath, sessionData);
-  
-      bot.sendMessage(chatId, `✅ Сессия успешно сохранена как ${fileName}`);
-    } catch (err) {
-      console.error("Ошибка загрузки сессии:", err);
-      bot.sendMessage(chatId, "❌ Ошибка при загрузке. Проверь формат и попробуй снова.");
-    }
-  });
+  const chatId = msg.chat.id;
+  if (chatId.toString() !== CONFIG.ADMIN_CHAT_ID) {
+    return bot.sendMessage(chatId, "⛔️ У тебя нет доступа к этому боту.");
+  }
+
+  const fileId = msg.document.file_id;
+  const fileName = msg.document.file_name || `session_${Date.now()}.json`;
+
+  if (!fileName.endsWith(".json")) {
+    return bot.sendMessage(chatId, "⛔️ Пожалуйста, отправь .json файл с сессией (localStorage).");
+  }
+
+  try {
+    const fileLink = await bot.getFileLink(fileId);
+    const response = await fetch(fileLink);
+    const sessionData = await response.text();
+
+    // Проверим, что это валидный JSON
+    JSON.parse(sessionData);
+
+    const savePath = path.join(CONFIG.SESSIONS_DIR, fileName);
+    await fs.outputFile(savePath, sessionData);
+
+    bot.sendMessage(chatId, `✅ Сессия успешно сохранена как ${fileName}`);
+  } catch (err) {
+    console.error("Ошибка загрузки сессии:", err);
+    bot.sendMessage(chatId, "❌ Ошибка при загрузке сессии. Проверь формат и попробуй снова.");
+  }
+});
 
 // /start
 bot.onText(/\/start/, (msg) => {
