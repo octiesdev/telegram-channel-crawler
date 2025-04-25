@@ -13,11 +13,24 @@ async function run(startUrl) {
 
   const sessionFiles = await fs.readdir(CONFIG.SESSIONS_DIR);
   if (sessionFiles.length === 0) {
-    throw new Error("❌ Нет доступных сессий Telegram. Загрузите хотя бы одну .json сессию.");
+    throw new Error("❌ Нет доступных сессий Telegram. Загрузите хотя бы одну .json сессию через бота.");
   }
 
-  const sessionPath = path.join(CONFIG.SESSIONS_DIR, sessionFiles[0]);
-  const localStorageItems = await fs.readJson(sessionPath);
+  // Выбираем случайную сессию
+  const randomFile = sessionFiles[Math.floor(Math.random() * sessionFiles.length)];
+  const sessionPath = path.join(CONFIG.SESSIONS_DIR, randomFile);
+
+  if (!sessionPath.endsWith(".json")) {
+    throw new Error("❌ Формат сессии должен быть .json");
+  }
+
+  const rawSession = await fs.readJson(sessionPath);
+
+  // Если это session от telegram-mtproto или другой формат — взять вложенный localStorage
+  const localStorageItems =
+    rawSession.localStorage && typeof rawSession.localStorage === "object"
+      ? rawSession.localStorage
+      : rawSession;
 
   const browser = await puppeteer.launch({
     headless: "new",
@@ -26,12 +39,15 @@ async function run(startUrl) {
   const page = await browser.newPage();
   await page.setViewport({ width: 1200, height: 800 });
 
-  await page.goto("https://web.telegram.org/k/");
+  // Заходим на Telegram Web и восстанавливаем localStorage
+  await page.goto("https://web.telegram.org/k/", { waitUntil: "domcontentloaded" });
+
   await page.evaluate((items) => {
     for (const [key, value] of Object.entries(items)) {
       localStorage.setItem(key, value);
     }
   }, localStorageItems);
+  
   await page.reload({ waitUntil: "domcontentloaded" });
 
   const queue = [startUrl];
@@ -45,9 +61,10 @@ async function run(startUrl) {
     await new Promise(resolve => setTimeout(resolve, 3000));
 
     const data = await page.evaluate(() => {
-      return Array.from(document.querySelectorAll("a.tgme_channel_related"))
+      const similar = Array.from(document.querySelectorAll("a.tgme_channel_related"))
         .map(a => a.href)
         .filter(href => href.startsWith("https://t.me/"));
+      return similar;
     });
 
     if (data.length > 0) {
