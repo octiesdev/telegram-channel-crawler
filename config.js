@@ -8,6 +8,6 @@ module.exports = {
       RESULT_FILE: "./results/results.json",
       VISITED_FILE: "./data/visited.json",
       QUEUE_FILE: "./queue.json",
-      SESSIONS_DIR: path.join(__dirname, "cookies") // ← Папка с сессиями!
+      SESSIONS_DIR: path.join(__dirname, "sessions") // ← Папка с сессиями!
     }
   };
