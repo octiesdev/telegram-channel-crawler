@@ -9,3 +9,10 @@ node_modules/
 
 # Логи
 logs/
+git add .
+git commit -m "fix: add sessions folder for Docker"
+git push
+flyctl deploy
+# .gitignore
+sessions/*
+!sessions/.gitkeep
