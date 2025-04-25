@@ -18,6 +18,15 @@ bot.on("message", (msg) => {
 
 const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args)); // ⬅️ добавь это вверху
 
+// /upload_session
+bot.onText(/\/upload_session/, (msg) => {
+    if (msg.chat.id.toString() !== CONFIG.ADMIN_CHAT_ID) {
+      return bot.sendMessage(msg.chat.id, "⛔️ У тебя нет доступа к этому боту.");
+    }
+  
+    bot.sendMessage(msg.chat.id, "📂 Отправь JSON-файл сессии (из localStorage Telegram Web).");
+  });
+
 bot.on("document", async (msg) => {
   const chatId = msg.chat.id;
   if (chatId.toString() !== CONFIG.ADMIN_CHAT_ID) {
