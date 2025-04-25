@@ -18,19 +18,20 @@ async function run(startUrl) {
 
   // Выбираем случайную сессию
   const sessionPath = path.join(CONFIG.SESSIONS_DIR, sessionFiles[Math.floor(Math.random() * sessionFiles.length)]);
-  const cookies = await fs.readJson(sessionPath);
+  const localStorageData = await fs.readJson(sessionPath);
 
   const browser = await puppeteer.launch({
     headless: "new",
     args: ["--no-sandbox", "--disable-setuid-sandbox"]
   });
+
   const page = await browser.newPage();
   await page.setViewport({ width: 1200, height: 800 });
 
-  // Устанавливаем cookies
+  // Устанавливаем localStorage
   await page.goto("https://web.telegram.org/k/", { waitUntil: "domcontentloaded" });
-  for (const cookie of cookies) {
-    await page.setCookie(cookie);
+  for (const [key, value] of Object.entries(localStorageData)) {
+    await page.evaluate((k, v) => localStorage.setItem(k, v), key, value);
   }
   await page.reload({ waitUntil: "domcontentloaded" });
 
