@@ -52,9 +52,21 @@ bot.onText(/\/start/, (msg) => {
 // /parse
 bot.onText(/\/parse (.+)/, async (msg, match) => {
   const url = match[1];
-  await fs.ensureDir("./logs");
-  await fs.appendFile("./logs/log.txt", `[${new Date().toISOString()}] START PARSE: ${url}\n`);
+
   try {
+    // Проверка, существует ли папка сессий
+    if (!(await fs.pathExists(CONFIG.SESSIONS_DIR))) {
+      return bot.sendMessage(msg.chat.id, `❌ Папка ${CONFIG.SESSIONS_DIR} не найдена.`);
+    }
+
+    const sessionFiles = await fs.readdir(CONFIG.SESSIONS_DIR);
+    if (!sessionFiles.length) {
+      return bot.sendMessage(msg.chat.id, `❌ Нет доступных сессий Telegram в ${CONFIG.SESSIONS_DIR}`);
+    }
+
+    await fs.ensureDir("./logs");
+    await fs.appendFile("./logs/log.txt", `[${new Date().toISOString()}] START PARSE: ${url}\n`);
+
     bot.sendMessage(msg.chat.id, `🔍 Запускаю парсинг от: ${url}`);
     await run(url);
     bot.sendMessage(msg.chat.id, "✅ Парсинг завершён. Используй /results чтобы получить файл.");
