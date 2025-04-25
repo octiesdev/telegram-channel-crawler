@@ -1,43 +1,40 @@
-// bot.js
+// Новый рабочий bot.js
 const TelegramBot = require("node-telegram-bot-api");
 const fs = require("fs-extra");
 const { exec } = require("child_process");
+const path = require("path");
 const { CONFIG } = require("./config.js");
-const { run } = require("./runner.js"); // добавь это в начало файла
+const { run } = require("./runner.js");
 
+const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
 const bot = new TelegramBot(CONFIG.TELEGRAM_BOT_TOKEN, { polling: true });
 
-let pendingAuth = {}; // для хранения номеров, ожидающих кода
+let pendingAuth = {}; // Для номера и кода
 
 // Проверка доступа
-bot.on("message", (msg) => {
-  if (msg.chat.id.toString() !== CONFIG.ADMIN_CHAT_ID) {
-    bot.sendMessage(msg.chat.id, "⛔️ У тебя нет доступа к этому боту.");
+bot.use(async (msg, next) => {
+  if (msg.chat && msg.chat.id.toString() !== CONFIG.ADMIN_CHAT_ID) {
+    await bot.sendMessage(msg.chat.id, "⛔️ У тебя нет доступа к этому боту.");
+    return;
   }
+  next();
 });
 
-const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args)); // ⬅️ добавь это вверху
+// /start
+bot.onText(/\/start/, (msg) => {
+  bot.sendMessage(msg.chat.id, "✅ Бот готов! Доступные команды: /upload_session, /parse <ссылка>, /results, /reset");
+});
 
-// /upload_session
-bot.onText(/\/upload_session/, (msg) => {
-    if (msg.chat.id.toString() !== CONFIG.ADMIN_CHAT_ID) {
-      return bot.sendMessage(msg.chat.id, "⛔️ У тебя нет доступа к этому боту.");
-    }
-  
-    bot.sendMessage(msg.chat.id, "📂 Отправь JSON-файл сессии (из localStorage Telegram Web).");
-  });
-
+// /upload_session - загрузка localStorage
 bot.on("document", async (msg) => {
-  const chatId = msg.chat.id;
-  if (chatId.toString() !== CONFIG.ADMIN_CHAT_ID) {
-    return bot.sendMessage(chatId, "⛔️ У тебя нет доступа к этому боту.");
-  }
+  if (!msg.document) return;
 
+  const chatId = msg.chat.id;
   const fileId = msg.document.file_id;
   const fileName = msg.document.file_name || `session_${Date.now()}.json`;
 
   if (!fileName.endsWith(".json")) {
-    return bot.sendMessage(chatId, "⛔️ Пожалуйста, отправь .json файл с сессией (localStorage).");
+    return bot.sendMessage(chatId, "⛔️ Только .json файлы принимаются.");
   }
 
   try {
@@ -45,22 +42,16 @@ bot.on("document", async (msg) => {
     const response = await fetch(fileLink);
     const sessionData = await response.text();
 
-    // Проверим, что это валидный JSON
-    JSON.parse(sessionData);
+    JSON.parse(sessionData); // Проверка на валидный JSON
 
     const savePath = path.join(CONFIG.SESSIONS_DIR, fileName);
     await fs.outputFile(savePath, sessionData);
 
-    bot.sendMessage(chatId, `✅ Сессия успешно сохранена как ${fileName}`);
+    await bot.sendMessage(chatId, `✅ Сессия сохранена: ${fileName}`);
   } catch (err) {
     console.error("Ошибка загрузки сессии:", err);
-    bot.sendMessage(chatId, "❌ Ошибка при загрузке сессии. Проверь формат и попробуй снова.");
+    await bot.sendMessage(chatId, "❌ Ошибка при загрузке. Проверь формат файла.");
   }
-});
-
-// /start
-bot.onText(/\/start/, (msg) => {
-  bot.sendMessage(msg.chat.id, "✅ Бот готов к работе! Напиши /parse <ссылка>");
 });
 
 // /parse
@@ -68,80 +59,46 @@ bot.onText(/\/parse (.+)/, async (msg, match) => {
   const url = match[1];
 
   try {
-    // Проверка, существует ли папка сессий
     if (!(await fs.pathExists(CONFIG.SESSIONS_DIR))) {
-      return bot.sendMessage(msg.chat.id, `❌ Папка ${CONFIG.SESSIONS_DIR} не найдена.`);
+      return bot.sendMessage(msg.chat.id, `❌ Папка сессий ${CONFIG.SESSIONS_DIR} не найдена.`);
     }
 
-    const sessionFiles = await fs.readdir(CONFIG.SESSIONS_DIR);
-    if (!sessionFiles.length) {
-      return bot.sendMessage(msg.chat.id, `❌ Нет доступных сессий Telegram в ${CONFIG.SESSIONS_DIR}`);
+    const sessions = await fs.readdir(CONFIG.SESSIONS_DIR);
+    if (!sessions.length) {
+      return bot.sendMessage(msg.chat.id, `❌ Нет доступных сессий в ${CONFIG.SESSIONS_DIR}`);
     }
 
     await fs.ensureDir("./logs");
     await fs.appendFile("./logs/log.txt", `[${new Date().toISOString()}] START PARSE: ${url}\n`);
 
-    bot.sendMessage(msg.chat.id, `🔍 Запускаю парсинг от: ${url}`);
+    await bot.sendMessage(msg.chat.id, `🔍 Парсинг запущен: ${url}`);
     await run(url);
-    bot.sendMessage(msg.chat.id, "✅ Парсинг завершён. Используй /results чтобы получить файл.");
+    await bot.sendMessage(msg.chat.id, `✅ Парсинг завершён! Используй /results для получения файла.`);
   } catch (err) {
-    console.error("Ошибка при запуске парсера:", err);
-    bot.sendMessage(msg.chat.id, `❌ Ошибка при запуске парсера: ${err.message}`);
+    console.error("Ошибка парсинга:", err);
+    await bot.sendMessage(msg.chat.id, `❌ Ошибка парсинга: ${err.message}`);
   }
-});
-
-// /status
-bot.onText(/\/status/, async (msg) => {
-  bot.sendMessage(msg.chat.id, "📊 Статус: пока нечего показать (логика runner.js будет позже)");
-});
-
-// /reset
-bot.onText(/\/reset/, async (msg) => {
-  await fs.writeJson(CONFIG.QUEUE_FILE, []);
-  bot.sendMessage(msg.chat.id, "♻️ Очередь очищена. visited и results не тронуты.");
 });
 
 // /results
 bot.onText(/\/results/, async (msg) => {
   const file = CONFIG.RESULT_FILE;
-  if (await fs.exists(file)) {
-    bot.sendDocument(msg.chat.id, file);
+  if (await fs.pathExists(file)) {
+    await bot.sendDocument(msg.chat.id, file);
   } else {
-    bot.sendMessage(msg.chat.id, "⛔️ Файл results.json пока пуст или не найден.");
+    await bot.sendMessage(msg.chat.id, "⛔️ Файл результатов пуст или отсутствует.");
   }
 });
 
-// /add_account
+// /reset
+bot.onText(/\/reset/, async (msg) => {
+  await fs.writeJson(CONFIG.QUEUE_FILE, []);
+  await fs.writeJson(CONFIG.VISITED_FILE, []);
+  await fs.writeJson(CONFIG.RESULT_FILE, []);
+  await bot.sendMessage(msg.chat.id, "♻️ Очередь и результаты сброшены!");
+});
+
+// /add_account - пока в разработке (будем через браузер сохранять localStorage)
 bot.onText(/\/add_account/, async (msg) => {
-  bot.sendMessage(msg.chat.id, "📱 Введите номер телефона в формате +123456789:");
-  pendingAuth[msg.chat.id] = { step: "awaiting_number" };
-});
-
-bot.on("message", async (msg) => {
-  const state = pendingAuth[msg.chat.id];
-  if (!state) return;
-
-  if (state.step === "awaiting_number") {
-    state.phone = msg.text;
-    state.step = "awaiting_code";
-    bot.sendMessage(msg.chat.id, `📩 Теперь отправьте код, полученный для ${state.phone}`);
-  } else if (state.step === "awaiting_code") {
-    const code = msg.text;
-    const phone = state.phone;
-    delete pendingAuth[msg.chat.id];
-
-    bot.sendMessage(msg.chat.id, `⏳ Авторизация для ${phone}...`);
-
-    exec(`node auth-manager.js ${phone} ${code}`, (error, stdout, stderr) => {
-      if (error) {
-        bot.sendMessage(msg.chat.id, `❌ Ошибка: ${error.message}`);
-        return;
-      }
-      if (stderr) {
-        bot.sendMessage(msg.chat.id, `⚠️ STDERR: ${stderr}`);
-        return;
-      }
-      bot.sendMessage(msg.chat.id, `✅ Готово! Аккаунт ${phone} авторизован. Cookies сохранены.`);
-    });
-  }
+  await bot.sendMessage(msg.chat.id, "⚙️ Пока добавление аккаунтов доступно только через загрузку сессий!");
 });
