@@ -40,12 +40,14 @@ async function run(startUrl) {
   await page.setViewport({ width: 1200, height: 800 });
 
   // Заходим на Telegram Web и восстанавливаем localStorage
-  await page.goto("https://web.telegram.org/k/");
+  await page.goto("https://web.telegram.org/k/", { waitUntil: "domcontentloaded" });
+
   await page.evaluate((items) => {
     for (const [key, value] of Object.entries(items)) {
       localStorage.setItem(key, value);
     }
   }, localStorageItems);
+  
   await page.reload({ waitUntil: "domcontentloaded" });
 
   const queue = [startUrl];
