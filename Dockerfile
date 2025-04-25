@@ -21,7 +21,7 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm install
 
-RUN mkdir -p /app/sessions
+RUN mkdir -p /app/sessions /app/logs /app/data /app/results
 
 # Копируем остальной код
 COPY . .
