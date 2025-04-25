@@ -17,8 +17,20 @@ async function run(startUrl) {
   }
 
   // Выбираем случайную сессию
-  const sessionPath = path.join(CONFIG.SESSIONS_DIR, sessionFiles[Math.floor(Math.random() * sessionFiles.length)]);
-  const localStorageItems = await fs.readJson(sessionPath);
+  const randomFile = sessionFiles[Math.floor(Math.random() * sessionFiles.length)];
+  const sessionPath = path.join(CONFIG.SESSIONS_DIR, randomFile);
+
+  if (!sessionPath.endsWith(".json")) {
+    throw new Error("❌ Формат сессии должен быть .json");
+  }
+
+  const rawSession = await fs.readJson(sessionPath);
+
+  // Если это session от telegram-mtproto или другой формат — взять вложенный localStorage
+  const localStorageItems =
+    rawSession.localStorage && typeof rawSession.localStorage === "object"
+      ? rawSession.localStorage
+      : rawSession;
 
   const browser = await puppeteer.launch({
     headless: "new",
